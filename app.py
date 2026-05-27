@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 
 # 페이지 설정
 st.set_page_config(page_title="고급 토압 계산기", layout="wide")
-st.title("🧱 토압 분포 및 합력 작용도 (고급형)")
+st.title("🧱 토압 분포 및 합력 작용도 (Earth Pressure Diagram)")
 
 # --- 1. 슬라이더 + 숫자 입력 연동 UI 함수 ---
 def dual_input(label, min_v, max_v, default_v, step_v, key):
@@ -29,19 +29,39 @@ def dual_input(label, min_v, max_v, default_v, step_v, key):
     
     return st.session_state[slider_key]
 
-# --- 2. 상단 입력부 ---
-theory = st.radio("📚 적용 이론 선택 (Rankine vs Coulomb)", ["Rankine (랭킨)", "Coulomb (쿨롱)"], horizontal=True)
+# --- 2. 상단 입력부 (선택된 이론에 따라 동적 UI 적용) ---
+theory = st.radio("📚 적용 이론 선택", ["Rankine (랭킨)", "Coulomb (쿨롱)"], horizontal=True)
 
-col_left, col_right = st.columns(2)
-with col_left:
-    H = dual_input("옹벽 높이 (H, m)", 1.0, 15.0, 5.0, 0.1, "h")
-    zw = dual_input("지하수위 깊이 (zw, m) - 지표면 기준", 0.0, 15.0, 5.0, 0.1, "zw")
-    beta_deg = dual_input("배면 경사 (β, deg)", 0.0, 30.0, 0.0, 1.0, "beta")
-with col_right:
-    gamma_t = dual_input("습윤 단위중량 (γ_t, kN/m³)", 10.0, 25.0, 18.0, 0.1, "gamma_t")
-    gamma_sat = dual_input("포화 단위중량 (γ_sat, kN/m³)", 10.0, 25.0, 20.0, 0.1, "gamma_sat")
-    phi_deg = dual_input("내부마찰각 (φ, deg)", 10.0, 45.0, 30.0, 1.0, "phi")
-    delta_deg = dual_input("벽면마찰각 (δ, deg) - Coulomb 전용", 0.0, 40.0, 15.0, 1.0, "delta")
+input_container = st.container()
+with input_container:
+    col_left, col_right = st.columns(2)
+    
+    if "Rankine" in theory:
+        # Rankine 이론: 핵심 변수 4개만 표시
+        with col_left:
+            H = dual_input("옹벽 높이 (H, m)", 1.0, 15.0, 5.0, 0.1, "h_r")
+            beta_deg = dual_input("배면토 경사각 (β, deg)", 0.0, 30.0, 0.0, 1.0, "beta_r")
+        with col_right:
+            gamma = dual_input("흙의 단위중량 (γ, kN/m³)", 10.0, 25.0, 18.0, 0.1, "gamma_r")
+            phi_deg = dual_input("내부마찰각 (φ, deg)", 10.0, 45.0, 30.0, 1.0, "phi_r")
+            
+        # Rankine에서는 사용하지 않는 변수들을 내부적으로 고정값 처리
+        zw = H + 1.0 
+        gamma_t = gamma
+        gamma_sat = gamma
+        delta_deg = 0.0
+        
+    else:
+        # Coulomb 이론: 모든 고급 변수 표시
+        with col_left:
+            H = dual_input("옹벽 높이 (H, m)", 1.0, 15.0, 5.0, 0.1, "h_c")
+            zw = dual_input("지하수위 깊이 (zw, m) - 지표면 기준", 0.0, 15.0, 5.0, 0.1, "zw_c")
+            beta_deg = dual_input("배면 경사 (β, deg)", 0.0, 30.0, 0.0, 1.0, "beta_c")
+        with col_right:
+            gamma_t = dual_input("습윤 단위중량 (γ_t, kN/m³)", 10.0, 25.0, 18.0, 0.1, "gamma_t_c")
+            gamma_sat = dual_input("포화 단위중량 (γ_sat, kN/m³)", 10.0, 25.0, 20.0, 0.1, "gamma_sat_c")
+            phi_deg = dual_input("내부마찰각 (φ, deg)", 10.0, 45.0, 30.0, 1.0, "phi_c")
+            delta_deg = dual_input("벽면마찰각 (δ, deg)", 0.0, 40.0, 15.0, 1.0, "delta_c")
 
 st.divider()
 
