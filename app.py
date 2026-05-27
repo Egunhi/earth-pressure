@@ -3,26 +3,57 @@ import math
 import plotly.graph_objects as go
 
 # 페이지 설정
-st.set_page_config(page_title="단면도 토압 계산기", layout="wide")
+st.set_page_config(page_title="토압 계산기", layout="wide")
 st.title("🧱 토압 분포 및 합력 작용도 (Earth Pressure Diagram)")
 
-# --- 1. 입력부 ---
-st.sidebar.header("📐 옹벽 및 지반 조건")
-H = st.sidebar.number_input("벽 높이 (H, m)", 1.0, 15.0, 5.0, step=0.1)
+# --- 1. 사라졌던 '슬라이더 + 숫자 입력' 듀얼 UI 부활 ---
+def dual_input(label, min_v, max_v, default_v, step_v, key):
+    slider_key = f"{key}_slider"
+    num_key = f"{key}_num"
 
-st.sidebar.header("💧 흙의 물성치")
-gamma = st.sidebar.number_input("단위중량 (γ, kN/m³)", 10.0, 25.0, 18.0, step=0.1)
-phi_deg = st.sidebar.number_input("내부마찰각 (φ, deg)", 10.0, 45.0, 30.0, step=1.0)
+    if slider_key not in st.session_state:
+        st.session_state[slider_key] = default_v
+    if num_key not in st.session_state:
+        st.session_state[num_key] = default_v
 
-# 수식 계산용 라디안 변환
+    def sync_from_slider():
+        st.session_state[num_key] = st.session_state[slider_key]
+        
+    def sync_from_num():
+        st.session_state[slider_key] = st.session_state[num_key]
+
+    st.write(f"**{label}**") 
+    col1, col2 = st.columns([3, 1]) 
+    
+    with col1:
+        st.slider(label, min_value=min_v, max_value=max_v, step=step_v, 
+                  key=slider_key, on_change=sync_from_slider, label_visibility="collapsed")
+    with col2:
+        st.number_input(label, min_value=min_v, max_value=max_v, step=step_v, 
+                        key=num_key, on_change=sync_from_num, label_visibility="collapsed")
+    
+    return st.session_state[slider_key]
+
+# --- 2. 입력부 (UI 배치) ---
+input_container = st.container()
+with input_container:
+    col_left, col_right = st.columns(2)
+    with col_left:
+        H = dual_input("옹벽 높이 (H, m)", 1.0, 10.0, 5.0, 0.1, "h")
+    with col_right:
+        gamma = dual_input("단위중량 (γ, kN/m³)", 10.0, 25.0, 18.0, 0.1, "gamma")
+        phi_deg = dual_input("내부마찰각 (φ, deg)", 10.0, 45.0, 30.0, 0.5, "phi")
+
+st.divider()
+
+# --- 3. 토압 수식 계산 ---
 phi = math.radians(phi_deg)
 
-# --- 2. Rankine 이론 토압 계산 ---
-# 주동토압계수(Ka) 및 수동토압계수(Kp)
+# Rankine 주동 및 수동토압계수
 Ka = math.tan(math.radians(45) - phi/2)**2
 Kp = math.tan(math.radians(45) + phi/2)**2
 
-# 저면에서의 측방토압 (응력, kPa)
+# 저면에서의 측방 응력 (kPa)
 sigma_a = gamma * H * Ka
 sigma_p = gamma * H * Kp
 
@@ -33,7 +64,7 @@ Pp = 0.5 * gamma * (H**2) * Kp
 # 합력 작용 위치 (저면으로부터 H/3)
 y_bar = H / 3
 
-# --- 3. Plotly 단면도 시각화 ---
+# --- 4. Plotly 단면도 시각화 ---
 fig = go.Figure()
 
 wall_width = H * 0.1 # 옹벽 두께를 높이에 비례하게 설정
@@ -108,7 +139,7 @@ fig.update_layout(
 
 st.plotly_chart(fig, use_container_width=True)
 
-# --- 4. 결과 요약 표 ---
+# --- 5. 결과 요약 표 ---
 st.divider()
 col1, col2 = st.columns(2)
 with col1:
